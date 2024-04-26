@@ -13,6 +13,7 @@ namespace VCCS.Api.Hubs.VCCSHub
     public class VCCSHub : Hub<IConnectionVCCSHub>
     {
         private static readonly Dictionary<string, Peer> _peers = new();
+        private static readonly Dictionary<string, Peer> _peersConnectedsInTF = new();
 
         // Terminologias:
         // - CHANNEL: é a frequência de comunicação a qual o usuário está conectado.
@@ -60,14 +61,25 @@ namespace VCCS.Api.Hubs.VCCSHub
             return peer;
         }
 
-        public async Task Leave(string channelName)
+        public async Task Leave(string channelName = null)
         {
-            if (_peers.TryGetValue(Context.ConnectionId, out var peer))
+            if (!string.IsNullOrEmpty(channelName))
             {
-                await Groups.RemoveFromGroupAsync(Context.ConnectionId, channelName);
-                await Clients.OthersInGroup(channelName).PeerLeaved(peer);
-
-                _peers.Remove(Context.ConnectionId);
+                if (_peers.TryGetValue(Context.ConnectionId, out var peer))
+                {
+                    await Groups.RemoveFromGroupAsync(Context.ConnectionId, channelName);
+                    await Clients.OthersInGroup(channelName).PeerLeaved(peer);
+                    _peers.Remove(Context.ConnectionId);
+                }
+            }
+            else
+            {
+                if (_peersConnectedsInTF.TryGetValue(Context.ConnectionId, out var peerTF))
+                {
+                    await Groups.RemoveFromGroupAsync(Context.ConnectionId, peerTF.Channel);
+                    await Clients.OthersInGroup(peerTF.Channel).PeerLeavedTF(peerTF);
+                    _peersConnectedsInTF.Remove(Context.ConnectionId);
+                }
             }
         }
 
@@ -83,6 +95,8 @@ namespace VCCS.Api.Hubs.VCCSHub
 
                 _peers.Remove(Context.ConnectionId);
             }
+
+            await Leave();
         }
 
         // WebRTC Signal Handler
@@ -113,18 +127,69 @@ namespace VCCS.Api.Hubs.VCCSHub
             }
             ;
             //await Clients.OthersInGroup(peer.Channel).PeerPTTState(Context.ConnectionId, state);
-            await Clients.OthersInGroup(peer.Channel).PeerPTTState(new PeerState(Context.ConnectionId, state));            
+            await Clients.OthersInGroup(peer.Channel).PeerPTTState(new PeerState(Context.ConnectionId, state));
+        }
+
+        public async Task<IList<Peer>> Connect(string identification)
+        {
+            var channel = "TF";
+            identification = channel + "-" + identification.ToUpper();
+
+            Peer peer;
+
+            if (_peersConnectedsInTF.Any(x => x.Key == Context.ConnectionId))
+            {
+                _peersConnectedsInTF.Remove(Context.ConnectionId);
+            }
+
+            peer = new()
+            {
+                Identification = identification,
+                ConnectionId = Context.ConnectionId,
+                IsPilot = false,
+                Channel = channel
+            };
+
+            _peersConnectedsInTF.Add(Context.ConnectionId, peer);
+
+            if (!string.IsNullOrEmpty(peer.Channel) && peer.Channel != channel)
+            {
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, peer.Channel);
+                await Clients.OthersInGroup(peer.Channel).PeerLeaved(peer);
+
+                peer.Channel = null;
+            }
+
+            peer.Channel = channel;
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, channel);
+
+            // Avisar todos do grupo que um novo usuário entrou na frequência (CHANNEL).
+            await Clients.OthersInGroup(channel).ConnectedTF(peer);
+
+            return _peersConnectedsInTF.Values.Where(x => x.Identification != identification).ToArray();
+        }
+
+        public async Task CallPeerToTalk(string identification)
+        {
+            var peerToReceiver = _peersConnectedsInTF.Values.FirstOrDefault(x => x.Identification == identification);
+            var peerOwn = _peersConnectedsInTF.GetValueOrDefault(Context.ConnectionId);
+
+            if (peerToReceiver != null && peerOwn != null)
+            {
+                await Clients.Client(peerToReceiver.ConnectionId).CallingToTalk(peerOwn);
+            }
+        }
+
+        public string GetConnectionId()
+        {
+            return Context.ConnectionId;
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             await LeaveAll();
             await base.OnDisconnectedAsync(exception);
-        }
-
-        public string GetConnectionId()
-        {
-            return Context.ConnectionId;
         }
     }
 }

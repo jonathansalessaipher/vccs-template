@@ -21,5 +21,15 @@ namespace VCCS.Api.Hubs.VCCSHub
 
         /// <summary>Informa os outros usuários do canal que o peer está com o PTT ativado.</summary>
         Task PeerPTTState(PeerState state);
+
+        Task Desconnect(string connectionId);
+
+
+        //CHAMADAS DO TIPO TF
+
+        Task ConnectedTF(Peer peer);
+        /// <summary>Informa que um peer se desconectou do mesmo canal (frequência) ao qual o usuário está conectado.</summary>
+        Task PeerLeavedTF(Peer peer);
+        Task CallingToTalk(Peer peer);
     }
 }
