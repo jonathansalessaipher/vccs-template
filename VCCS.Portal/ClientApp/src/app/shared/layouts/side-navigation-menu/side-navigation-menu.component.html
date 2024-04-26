@@ -1,0 +1,19 @@
+<ng-content></ng-content>
+
+<div class="menu-container">
+  <dx-tree-view
+    [items]="items"
+    keyExpr="id"
+    selectionMode="single"
+    [selectByClick]="true"
+    [focusStateEnabled]="false"
+    [searchEnabled]="true"
+    [searchEditorOptions]="{label: '', stylingMode: 'underlined'}"
+    expandEvent="click"
+    (onItemClick)="onItemClick($event)"
+    width="100%"
+    dataStructure="plain"
+    parentIdExpr="parentId"
+    displayExpr="text">
+  </dx-tree-view>
+</div>

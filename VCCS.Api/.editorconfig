@@ -1,0 +1,21 @@
+# Rules in this file were initially inferred by Visual Studio IntelliCode from the XXXXX codebase based on best match to current usage at 24/02/2021
+# You can modify the rules from these initially generated values to suit your own policies
+# You can learn more about editorconfig here: https://docs.microsoft.com/en-us/visualstudio/ide/editorconfig-code-style-settings-reference
+# Remove the line below if you want to inherit .editorconfig settings from higher directories
+
+# Documentação das Regras
+# https://docs.microsoft.com/en-us/dotnet/fundamentals/code-analysis/categories
+
+#root = true
+#is_global = true
+
+# Dotnet code analysis settings:
+[*.{cs,vb}]
+# Obrigatórios
+dotnet_diagnostic.CS0168.severity = error #The variable 'var' is declared but never used
+dotnet_diagnostic.CS0219.severity = error #The variable 'variable' is assigned but its value is never used
+dotnet_diagnostic.CS4014.severity = error #chamar método async inapropriadamente.
+dotnet_diagnostic.CS1998.severity = error #método com async sem utilizar o await
+dotnet_diagnostic.CA1805.severity = error #Do not initialize unnecessarily
+dotnet_diagnostic.CA1822.severity = error #Mark members as static
+dotnet_diagnostic.CA1823.severity = error #Avoid unused private fields

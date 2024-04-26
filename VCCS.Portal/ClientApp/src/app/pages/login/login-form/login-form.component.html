@@ -1,0 +1,44 @@
+<form class="login-form" (submit)="onSubmit($event)">
+
+  <dx-form [formData]="formData" [disabled]="loading">
+
+    <dxi-item dataField="email" editorType="dxTextBox"
+      [editorOptions]="{ stylingMode: 'filled', placeholder: 'Email', mode: 'email' }">
+      <dxi-validation-rule type="required" message="O email é obrigatório"></dxi-validation-rule>
+      <dxi-validation-rule type="email" message="O email é inválido"></dxi-validation-rule>
+      <dxo-label [visible]="false"></dxo-label>
+    </dxi-item>
+
+    <dxi-item dataField="password" editorType="dxTextBox"
+      [editorOptions]="{ stylingMode: 'filled', placeholder: 'Senha', mode: 'password' }">
+      <dxi-validation-rule type="required" message="A senha é obrigatória"></dxi-validation-rule>
+      <dxo-label [visible]="false"></dxo-label>
+    </dxi-item>
+
+    <dxi-item dataField="keepMeConnected" editorType="dxCheckBox"
+      [editorOptions]="{ text: 'Matenha-me conectado', elementAttr: { class: 'form-text' } }">
+      <dxo-label [visible]="false"></dxo-label>
+    </dxi-item>
+
+    <dxi-item itemType="button">
+      <dxo-button-options width="100%" type="default" [useSubmitBehavior]="true" [template]="'signInTemplate'">
+      </dxo-button-options>
+    </dxi-item>
+
+    <dxi-item itemType="button">
+      <dxo-button-options text="Criar uma conta" width="100%" [onClick]="onCreateAccountClick"></dxo-button-options>
+    </dxi-item>
+
+    <ng-container *dxTemplate="let item of 'signInTemplate'">
+      <div>
+        <span class="dx-button-text">
+          <ng-container *ngIf="loading; else notLoading">
+            <dx-load-indicator width="24px" height="24px" [visible]="true"></dx-load-indicator>
+          </ng-container>
+          <ng-template #notLoading>login</ng-template>
+        </span>
+      </div>
+    </ng-container>
+
+  </dx-form>
+</form>

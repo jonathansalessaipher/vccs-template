@@ -1,0 +1,10 @@
+{
+  "items": [],
+  "baseTheme": "material.blue.dark.compact",
+  "assetsBasePath": "../../../node_modules/devextreme/dist/css/",
+  "outputColorScheme": "additional",
+  "makeSwatch": true,
+  "version": "22.2.4",
+  "base": true,
+  "removeExternalResources": true
+}

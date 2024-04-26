@@ -1,0 +1,10 @@
+:root {
+  --global-base-accent: #03a9f4;
+  --global-base-text-color: #ffffff;
+  --global-base-bg: #363640;
+  --global-base-bg-darken: #2a2a32;
+  --global-base-bg-lighten: #515159;
+  --global-base-border-color: #3F3F4B;
+  --global-base-card-header: #20202a;
+}
+

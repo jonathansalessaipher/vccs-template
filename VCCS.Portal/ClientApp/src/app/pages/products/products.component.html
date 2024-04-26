@@ -1,0 +1,62 @@
+<div class="content-block">
+  <div class="dx-card responsive-paddings">
+    <dx-data-grid
+      #productGrid
+      class="app-grid"
+      [dataSource]="products"
+      keyExpr="id"
+      [showBorders]="true"
+      [focusedRowEnabled]="true"
+      [focusedRowIndex]="0"
+      [columnAutoWidth]="true"
+      [columnHidingEnabled]="true"
+      (onRowUpdating)="onRowUpdating($event)"
+      (onRowRemoving)="onRowRemoving($event)"
+      (onRowInserting)="onRowInserting($event)">
+
+      <dxo-toolbar>
+        <dxi-item location="before">
+          <div *dxTemplate class="app-grid-title">
+            <p><b>Products</b></p>
+          </div>
+        </dxi-item>
+        <dxi-item location="after" [options]="{ text: 'Product', stylingMode:'contained' }" showText="always" name="addRowButton"></dxi-item>
+        <dxi-item location="after" name="searchPanel"></dxi-item>
+      </dxo-toolbar>
+
+      <dxo-search-panel
+        [visible]="true"
+        [width]="250"
+        placeholder="Pesquisar...">
+      </dxo-search-panel>
+
+      <dxo-paging [pageSize]="10"></dxo-paging>
+
+      <dxo-pager
+        [showPageSizeSelector]="true"
+        [showInfo]="true"
+        displayMode="compact">
+      </dxo-pager>
+
+      <dxo-editing
+        mode="row"
+        [allowAdding]="true"
+        [allowUpdating]="true"
+        [allowDeleting]="true">
+      </dxo-editing>
+
+      <dxi-column dataField="name" caption="Nome"></dxi-column>
+      <dxi-column
+        dataField="value"
+        caption="Valor"
+        dataType="number"
+        [format]="{ style: 'currency', currency: 'BRL'}"
+        width="15%">
+      </dxi-column>
+      <dxi-column dataField="quantity" caption="Quantidade" width="15%"></dxi-column>
+
+    </dx-data-grid>
+  </div>
+</div>
+
+

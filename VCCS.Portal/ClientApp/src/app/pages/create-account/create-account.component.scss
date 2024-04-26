@@ -1,0 +1,38 @@
+#create-account-page {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: row;
+  // background-image: "";
+  // background-size: cover;
+
+  .create-account-header {
+    text-align: center;
+    margin: -20px auto 25px auto;
+
+    .title {
+      color: var(--global-base-accent);
+      font-weight: bold;
+      font-size: 30px;
+      margin: 0;
+    }
+  }
+
+  .create-account-box {
+    width: 310px;
+    height: 480px;
+    margin: auto auto;
+    padding: 30px;
+    background-color: var(--global-base-bg);
+    border-radius: 5px;
+    opacity: 0.8 !important;
+  }
+
+  .create-account-img {
+    width: 20%;
+    margin: 0 auto 15px;
+    display: block;
+    border-radius: 50%;
+    margin-top: 35px;
+  }
+}
