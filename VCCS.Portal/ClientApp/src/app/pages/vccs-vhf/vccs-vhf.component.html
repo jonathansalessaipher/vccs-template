@@ -63,43 +63,6 @@
               </div>
             </div>
           </div>
-          <div class="col-sm-6 col-md-6 col-lg-5 col-xl-4 col-xxl-3">
-            <div class="tf">
-              <div class="row m-0 mb-2">
-                <div class="col text-center">
-                  <span class="title">Frequências do tipo TF</span>
-                </div>
-              </div>
-              <div class="row m-0">
-                <ng-container *ngIf="frequenciesTF.length > 0; else elseTemplate">
-                  <div class="col-6 pe-1 ps-1 " *ngFor="let frequency of frequenciesTF; let i=index">
-                    <div class="frequency mb-2" [id]="frequency.id">
-                      <div class="channel" (click)="callPeerToTalk(frequency)" [ngClass]="{'channel-selected': frequency.isSelected}">
-                        <div class="">
-                          {{frequency.id}}
-                        </div>
-                        <!-- <div class="signal">
-                          <div class="row m-0">
-                            <div class="col-6 p-0">
-                              RX
-                            </div>
-                            <div class="col-6 p-0">
-                              TX
-                            </div>
-                          </div>
-                        </div> -->
-                      </div>
-                    </div>
-                  </div>
-                </ng-container>
-                <ng-template #elseTemplate>
-                  <div class="col no-frequencies">
-                    <span>Nenhuma conexão no momento.</span>
-                  </div>
-                </ng-template>
-              </div>
-            </div>
-          </div>
           <div class="col">
           </div>
         </div>

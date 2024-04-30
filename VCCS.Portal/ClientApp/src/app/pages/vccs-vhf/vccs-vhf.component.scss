@@ -1,0 +1,145 @@
+.flex-center {
+  display: flex;
+  justify-items: center;
+  align-items: center;
+}
+
+.freq {
+  background-color: #8CC9CD;
+  border-radius: 8px;
+}
+
+.top {
+  .audio {
+    visibility: hidden;
+  }
+}
+
+.badge {
+      display: inline-block;
+    background-color: #438b47 !important;
+    padding: 7px;
+}
+
+.badge-success {
+  background-color: #438b47 !important;
+}
+
+.badge-error {
+  background-color: #cb4c4c !important;
+}
+
+@keyframes blink {
+  0% { border-color: var(--global-base-accent); }
+  50% { border-color: transparent; }
+  100% { border-color: var(--global-base-accent); }
+}
+
+.blinking-border {
+  border-color: var(--global-base-accent);
+  animation: blink 2s linear infinite;
+}
+
+.frequency {
+  border: 2px solid transparent;
+  border-radius: 5px;
+}
+
+.channel {
+  border: 1px solid var(--global-base-bg-lighten);
+  background-color: var(--global-base-bg-lighten);
+  color: var(--global-base-text-color);
+  font-weight: bold;
+  text-align: center;
+  border-radius: 5px;
+  cursor: pointer;
+  padding: 10px 0px;
+}
+
+.channel-selected {
+  background-color: var(--global-base-bg-darken);
+}
+
+.channel:hover {
+  background-color: var(--global-base-bg-darken);
+}
+
+.tcc {
+  width: 1px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tce {
+  width: 1px;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.tc {
+  width: 1px;
+  white-space: nowrap;
+}
+
+@keyframes voice {
+  0%   { color: var(--global-base-accent); }
+  50%  { color: var(--global-base-text-color) }
+  100% { color: var(--global-base-accent); }
+}
+
+.voice {
+  color: var(--global-base-accent);
+  animation: voice 2s linear infinite;
+}
+
+::ng-deep .custom-item {
+  .device-name {
+    font-weight: bold;
+  }
+
+  .is-default {
+    font-size: 11px;
+    color: var(--global-base-accent);
+  }
+}
+
+.title {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--global-base-accent);
+  text-transform: uppercase;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.vhf {
+  background-color: #6a7b73;
+  border-radius: 5px;
+  box-shadow: 3px 5px 7px var(--global-base-bg-darken);
+
+  .title {
+    color: var(--global-base-text-color);
+  }
+}
+.tf {
+  background-color: #55859b;
+  border-radius: 5px;
+  box-shadow: 3px 5px 7px var(--global-base-bg-darken);
+  .title {
+    color: var(--global-base-text-color);
+  }
+}
+
+.no-frequencies {
+  margin: 15px 10px 30px 10px;
+  text-align: center;
+  font-size: 12px;
+  text-align: center;
+  padding: 15px 0px;
+  background-color: #2f0909;
+  border-radius: 5px;
+  border: 1px solid #ff9090;
+  color: #ff9090;
+}

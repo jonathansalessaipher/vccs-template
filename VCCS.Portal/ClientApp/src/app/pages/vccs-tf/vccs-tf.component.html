@@ -1,0 +1,207 @@
+<div class="content-block">
+  <div class="dx-card responsive-paddings" [ngStyle]="{'height': height + 'px'}">
+    <div class="top">
+      <div class="audio">
+        <!-- Elemento de áudio para cada parceiro conectado à frequência (Canal) -->
+        <audio id="remoteAudio" autoplay="" playsinline="true"></audio>
+      </div>
+      <div class="row">
+        <div class="col flex-center ps-2">
+          <span class="me-2 badge" [ngClass]="{'badge-success': isConnected, 'badge-error': !isConnected}"></span>
+          <span class="me-2" *ngIf="isConnected"> {{ myConnectionId ? 'ID de conexão: ' + myConnectionId : 'Conectando...' }}</span>
+
+          <dx-button
+            class="me-2"
+            [text]="isMute ? 'Mutar' : 'Desmutar'"
+            (click)="mutateOrUnmute()"
+            stylingMode='contained'
+            [type]="isMute ? 'danger' : 'success'"
+            [disabled]="!isConnected || peer === undefined">
+          </dx-button>
+
+          <dx-button
+            text="Escolher dispositivos"
+            icon="preferences"
+            (click)="showConfigDevices = true"
+            stylingMode='contained'
+            type="default">
+          </dx-button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mt-2">
+      <div class="col-sm-6 col-md-7 col-lg-8 col-xl-8 col-xxl-9">
+        <div class="row mt-2">
+          <div class="col-sm-6 col-md-6 col-lg-5 col-xl-4 col-xxl-3">
+            <div class="tf">
+              <div class="row m-0 mb-2">
+                <div class="col text-center">
+                  <span class="title">Frequências do tipo TF</span>
+                </div>
+              </div>
+              <div class="row m-0">
+                <ng-container *ngIf="frequencies.length > 0; else elseTemplate">
+                  <div class="col-6 pe-1 ps-1 " *ngFor="let frequency of frequencies; let i=index">
+                    <div class="frequency mb-2" [id]="frequency.connectionId">
+                      <div class="channel" (click)="selectFrequency(frequency)" [ngClass]="{'channel-selected': frequency.isSelected}">
+                        <div class="">
+                          {{frequency.id}}
+                        </div>
+                        <!-- <div class="signal">
+                          <div class="row m-0">
+                            <div class="col-6 p-0">
+                              RX
+                            </div>
+                            <div class="col-6 p-0">
+                              TX
+                            </div>
+                          </div>
+                        </div> -->
+                      </div>
+                    </div>
+                  </div>
+                </ng-container>
+                <ng-template #elseTemplate>
+                  <div class="col no-frequencies">
+                    <span>Nenhuma conexão no momento.</span>
+                  </div>
+                </ng-template>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-md-5 col-lg-4 col-xl-4 col-xxl-3">
+        <div class="card h-100 pe-0">
+          <div class="card-header">
+              Conexões ativas
+          </div>
+          <!-- <div class="card-body p-0">
+            <ng-container *ngIf="peers.length == 0; else elseTemplate">
+              <span class="alert alert-info d-block text-center m-3" role="alert">Nenhuma conexão ativa</span>
+            </ng-container>
+            <ng-template #elseTemplate>
+              <table class="table">
+                <thead>
+                    <tr>
+                        <th class="bg-secondary">Id</th>
+                        <th class="bg-secondary"></th>
+                        <th class="bg-secondary"></th>
+                        <th class="bg-secondary">Tipo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let peer of peers; let i=index">
+                    <td>{{peer.identification}} </td>
+
+                    <td class="tcc">
+                      <ng-container *ngIf="peer.connectionId != myConnectionId;">
+                        <i class="bi" [ngClass]="{'bi-mic text-success': peer.isMicActive, 'bi-mic-mute text-danger': !peer.isMicActive}"></i>
+                      </ng-container>
+                    </td>
+
+                    <td class="tcc">
+
+                      <ng-container *ngIf="peer.connectionId != myConnectionId;">
+                        <i [id]="'voice-'+peer.connectionId" class="voice bi bi-volume-up-fill" [attr.data-voice]="peer.connectionId" [ngStyle]="{'visibility': 'hidden'}"></i>
+                      </ng-container>
+                    </td>
+
+                    <td class="tcc">
+                      <ng-container *ngIf="peer.connectionId == myConnectionId; else elseTemplate">
+                        <span class="badge bg-secondary">EU</span>
+                      </ng-container>
+                      <ng-template #elseTemplate>
+                        <ng-container *ngIf="peer.isPilot; else elseTemplate">
+                          <i class="bi bi-airplane-engines"></i>
+                        </ng-container>
+                        <ng-template #elseTemplate>
+                          <span class="badge bg-info">ATCO</span>
+                        </ng-template>
+                      </ng-template>
+                    </td>
+                  </tr>
+                </tbody>
+            </table>
+            </ng-template>
+          </div> -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<dx-popup
+  [width]="500"
+  height="auto"
+  [showTitle]="true"
+  title="Configuração de áudio"
+  [dragEnabled]="false"
+  [hideOnOutsideClick]="false"
+  [showCloseButton]="false"
+  container=".dx-viewport"
+  [(visible)]="showConfigDevices">
+  <dxi-toolbar-item
+    widget="dxButton"
+    toolbar="bottom"
+    location="before"
+    [options]="saveDevicesButtonOptions">
+  </dxi-toolbar-item>
+  <dxi-toolbar-item
+    widget="dxButton"
+    toolbar="bottom"
+    location="after"
+    [options]="closeButtonOptions">
+  </dxi-toolbar-item>
+
+  <div *dxTemplate="let data of 'content'">
+    <div class="row">
+      <div class="col-12">
+        <div class="mb-1"> Microfone </div>
+        <dx-select-box
+          id="select-microfone"
+          placeholder="Escolha seu microfone"
+          [items]="microfones"
+          keyExpr="id"
+          displayExpr="name"
+          [showClearButton]="false"
+          [(value)]="selectedMicrofone">
+          <div *dxTemplate="let data of 'item'">
+            <div class="custom-item">
+              <div class="device-name">
+                {{ data.name }}
+              </div>
+              <span class="is-default" *ngIf="data.isDefault">Dispositivo padrão do sistema</span>
+            </div>
+          </div>
+        </dx-select-box>
+      </div>
+      <div class="col-12 mt-3">
+        <div class="mb-1"> Alto-falante </div>
+        <dx-select-box
+          placeholder="Escolha seu dispositivo de áudio"
+          [items]="audios"
+          keyExpr="id"
+          displayExpr="name"
+          [showClearButton]="false"
+          [searchEnabled]="false"
+          [(value)]="selectedAudio">
+
+          <div *dxTemplate="let data of 'item'">
+            <div class="custom-item">
+              <div class="device-name">
+                {{ data.name }}
+              </div>
+              <span class="is-default" *ngIf="data.isDefault">Dispositivo padrão do sistema</span>
+            </div>
+          </div>
+
+        </dx-select-box>
+      </div>
+    </div>
+  </div>
+  </dx-popup>

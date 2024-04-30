@@ -68,6 +68,13 @@ export class SignalRService {
    * @returns Retorna as informações do parceiro.
    */
    onCallingToTalk: Subject<IPeer> = new Subject<IPeer>();
+   /**
+   * Este evento é acionado quando o parceiro recebeu as minhas configurações de conexão após ele ter entrado na mesma frequência que eu.
+   * @returns Retorna as configurações de conexão do parceiro.
+   */
+  public offerReceived$: Subject<ISignalPeer> = new Subject<ISignalPeer>();
+  public answerReceived$: Subject<ISignalPeer> = new Subject<ISignalPeer>();
+  public iceCandidateReceived$: Subject<string> = new Subject<string>();
 
   constructor() {
     this.url = `${environment.apiUrl}/vccsHub`;
@@ -184,6 +191,18 @@ export class SignalRService {
       this.hubConnection.on(VCCSKeys.CallingToTalk, (data: IPeer) => {
         this.onCallingToTalk.next(data);
       });
+
+      this.hubConnection.on(VCCSKeys.ReceiveOffer, (offer: ISignalPeer) => {
+        this.offerReceived$.next(offer);
+      });
+
+      this.hubConnection.on(VCCSKeys.ReceiveAnswer, (answer: ISignalPeer) => {
+        this.answerReceived$.next(answer);
+      });
+
+      this.hubConnection.on(VCCSKeys.ReceiveICECandidate, (candidate: any) => {
+        this.iceCandidateReceived$.next(candidate);
+      });
     }
   }
 
@@ -288,5 +307,23 @@ export class SignalRService {
         console.error(error);
       }
     }
+  }
+
+  public sendOffer(offer: RTCSessionDescriptionInit, peerConnectionId: string): void {
+    const data = JSON.stringify(offer);
+    this.hubConnection.invoke('SendOffer', data, peerConnectionId)
+      .catch(err => console.error('Error while sending offer via SignalR: ', err));
+  }
+
+  public sendAnswer(answer: RTCSessionDescriptionInit, peerConnectionId: string): void {
+    const data = JSON.stringify(answer);
+    this.hubConnection.invoke('SendAnswer', data, peerConnectionId)
+      .catch(err => console.error('Error while sending answer via SignalR: ', err));
+  }
+
+  public sendICECandidate(candidate: RTCIceCandidate, peerConnectionId: string): void {
+    const data = JSON.stringify(candidate);
+    this.hubConnection.invoke('SendICECandidate', data, peerConnectionId)
+      .catch(err => console.error('Error while sending ICE candidate via SignalR: ', err));
   }
 }

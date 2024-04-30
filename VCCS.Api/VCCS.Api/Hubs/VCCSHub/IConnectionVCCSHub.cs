@@ -31,5 +31,8 @@ namespace VCCS.Api.Hubs.VCCSHub
         /// <summary>Informa que um peer se desconectou do mesmo canal (frequência) ao qual o usuário está conectado.</summary>
         Task PeerLeavedTF(Peer peer);
         Task CallingToTalk(Peer peer);
+        Task ReceiveOffer(SignalPeer signalPeer);
+        Task ReceiveAnswer(SignalPeer signalPeer);
+        Task ReceiveICECandidate(string candidate);
     }
 }

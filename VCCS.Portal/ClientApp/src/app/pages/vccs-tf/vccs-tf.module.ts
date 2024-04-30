@@ -1,23 +1,20 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { VccsComponent } from './vccs.component';
-import { DxButtonModule, DxPopupModule, DxSelectBoxModule, DxTextBoxModule } from 'devextreme-angular';
+import { VccsTfComponent } from './vccs-tf.component';
 import { AuthGuardService } from 'src/app/shared/infra/route-guards';
 import { RouterModule, Routes } from '@angular/router';
+import { DxButtonModule, DxPopupModule, DxSelectBoxModule, DxTextBoxModule } from 'devextreme-angular';
 
 const routes: Routes = [
   {
     path: "",
-    data: { title: 'vccs'},
-    component: VccsComponent,
+    data: { title: 'VCCS TF'},
+    component: VccsTfComponent,
     canActivate: [AuthGuardService]
   }
 ];
 
 @NgModule({
-  declarations: [
-    VccsComponent
-  ],
   imports: [
     CommonModule,
     DxButtonModule,
@@ -25,6 +22,7 @@ const routes: Routes = [
     DxPopupModule,
     DxSelectBoxModule,
     DxTextBoxModule
-  ]
+  ],
+  declarations: [VccsTfComponent]
 })
-export class VccsModule { }
+export class VccsTfModule { }

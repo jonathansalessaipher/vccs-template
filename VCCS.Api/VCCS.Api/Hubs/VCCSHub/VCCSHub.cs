@@ -181,6 +181,61 @@ namespace VCCS.Api.Hubs.VCCSHub
             }
         }
 
+        public async Task SendOffer(string signal, string targetConnectionId)
+        {
+            // Verificar se o target ainda está conectado.
+            if (!_peersConnectedsInTF.TryGetValue(targetConnectionId, out Peer? peer))
+            {
+                await Clients.Caller.Error("Conexão de destino não está mais disponível!");
+                return;
+            }
+
+            if (!_peersConnectedsInTF.TryGetValue(Context.ConnectionId, out Peer? signilingPeer))
+            {
+                await Clients.Caller.Error("Sua conexão é inválida. Recarregue a página e tente novamente!");
+                return;
+            }
+
+            //await Clients.Client(peer.ConnectionId).ReceiveSignal(signilingPeer, signal);
+            await Clients.Client(peer.ConnectionId).ReceiveOffer(new SignalPeer(signal, signilingPeer));
+        }
+
+        public async Task SendAnswer(string signal, string targetConnectionId)
+        {
+            // Verificar se o target ainda está conectado.
+            if (!_peersConnectedsInTF.TryGetValue(targetConnectionId, out Peer? peer))
+            {
+                await Clients.Caller.Error("Conexão de destino não está mais disponível!");
+                return;
+            }
+
+            if (!_peersConnectedsInTF.TryGetValue(Context.ConnectionId, out Peer? signilingPeer))
+            {
+                await Clients.Caller.Error("Sua conexão é inválida. Recarregue a página e tente novamente!");
+                return;
+            }
+            //await Clients.Client(peer.ConnectionId).ReceiveSignal(signilingPeer, signal);
+            await Clients.Client(peer.ConnectionId).ReceiveAnswer(new SignalPeer(signal, signilingPeer));
+        }
+
+        public async Task SendICECandidate(string candidate, string targetConnectionId)
+        {
+
+            // Verificar se o target ainda está conectado.
+            if (!_peersConnectedsInTF.TryGetValue(targetConnectionId, out Peer? peer))
+            {
+                await Clients.Caller.Error("Conexão de destino não está mais disponível!");
+                return;
+            }
+
+            if (!_peersConnectedsInTF.TryGetValue(Context.ConnectionId, out Peer? signilingPeer))
+            {
+                await Clients.Caller.Error("Sua conexão é inválida. Recarregue a página e tente novamente!");
+                return;
+            }
+            await Clients.Client(peer.ConnectionId).ReceiveICECandidate(candidate);
+        }
+
         public string GetConnectionId()
         {
             return Context.ConnectionId;

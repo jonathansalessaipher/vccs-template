@@ -17,8 +17,12 @@ const routes: Routes = [
     loadChildren: () => import("./pages/home/home.module" ).then(m => m.HomeModule)
   },
   {
-    path: 'vccs',
-    loadChildren: () => import("./pages/vccs/vccs.module" ).then(m => m.VccsModule)
+    path: 'vccs-vhf',
+    loadChildren: () => import("./pages/vccs-vhf/vccs-vhf.module" ).then(m => m.VccsVhfModule)
+  },
+  {
+    path: 'vccs-tf',
+    loadChildren: () => import("./pages/vccs-tf/vccs-tf.module" ).then(m => m.VccsTfModule)
   },
   {
     path: 'products',

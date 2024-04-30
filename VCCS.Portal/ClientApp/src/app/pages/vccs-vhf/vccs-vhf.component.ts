@@ -6,14 +6,14 @@ import { Frequency } from 'src/app/shared/models';
 import { SignalRService } from 'src/app/shared/services/signal-r/signal-r.service';
 import { AudioDeviceUtil, GuidUtil } from 'src/app/shared/utils';
 import { ICE_SERVERS, OFFER_OPTIONS } from 'src/app/shared/utils/web-rtc-keys.utils';
-import { confirm, custom } from 'devextreme/ui/dialog';
+import { custom } from 'devextreme/ui/dialog';
 
 @Component({
   selector: 'app-vccs',
-  templateUrl: './vccs.component.html',
-  styleUrls: ['./vccs.component.scss']
+  templateUrl: './vccs-vhf.component.html',
+  styleUrls: ['./vccs-vhf.component.scss']
 })
-export class VccsComponent implements OnInit, OnDestroy {
+export class VccsVhfComponent implements OnInit, OnDestroy {
   private unsub$: any = new Subject();
   private readonly myId = GuidUtil.generateGUID().substring(0, 8);
   private peerConnections: any = {};
@@ -84,7 +84,6 @@ export class VccsComponent implements OnInit, OnDestroy {
         this.myConnectionId = this._signalRService.connectionId;
         this._toastr.success(`Conexão com o servidor estabelecida com sucesso!`);
         this.isConnected = true;
-        this.connectTF();
       }
     }
 
@@ -98,7 +97,6 @@ export class VccsComponent implements OnInit, OnDestroy {
           console.log('connectionId', this.myConnectionId);
           this._toastr.success(`Conexão com o servidor estabelecida com sucesso!`);
           this.isConnected = true;
-          this.connectTF();
         }
       } else {
         this.isConnected = false;
@@ -333,21 +331,6 @@ export class VccsComponent implements OnInit, OnDestroy {
         const connectedPeer = await this._signalRService.join(frequency.id, frequency.channel, false);
         if (connectedPeer) {
           await this.addPeer(connectedPeer);
-        }
-      } catch (error) {
-        console.log(error);
-        this.errorHandler(error);
-      }
-    }
-  }
-
-  public async connectTF() {
-    if (this._signalRService.serviceConnected) {
-      try {
-        var connectedPeers = await this._signalRService.connect(this.myId.substring(0,3));
-        if (connectedPeers) {
-          this.frequenciesTF = [];
-          connectedPeers.forEach((peer: IPeer) => this.frequenciesTF.push(new Frequency(peer.identification, peer.channel)));
         }
       } catch (error) {
         console.log(error);

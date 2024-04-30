@@ -17,8 +17,14 @@ export const navigation = [
   },
   {
     id: 2,
-    text: 'VCCS',
-    path: '/vccs',
+    text: 'VCCS VHF',
+    path: '/vccs-vhf',
+    icon: 'globe'
+  },
+  {
+    id: 7,
+    text: 'VCCS TF',
+    path: '/vccs-tf',
     icon: 'globe'
   },
   {
