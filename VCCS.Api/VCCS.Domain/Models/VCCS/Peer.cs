@@ -5,7 +5,6 @@ namespace VCCS.Domain.Models.VCCS
 {
     public sealed class Peer : INotifyPropertyChanged
     {
-        private bool _isMicActive;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -24,17 +23,10 @@ namespace VCCS.Domain.Models.VCCS
         public bool IsPilot { get; init; }
 
         /// <summary>Quando for diferente de nulo, indica o canal ao qual o peer está conectado.</summary>
-        public string? Channel { get; set; }
-
-        public bool IsMicActive
-        {
-            get => _isMicActive;
-            set
-            {
-                _isMicActive = value;
-                OnPropertyChanged();
-            }
-        }
+        public string Channel { get; set; }
+        public bool OnCall { get; set; }
+        public bool isMicActive { get; set; }
+        public bool isAudioActive { get; set; }
     }
     public sealed class SignalPeer
     {
@@ -56,6 +48,19 @@ namespace VCCS.Domain.Models.VCCS
         {
             ConnectionId = connectionId;
             State = state;
+        }
+    }
+    public sealed class PeerCallStatus
+    {
+        public string ConnectionId { get; set; }
+        public bool OnCallAccept { get; set; }
+        public Peer Peer { get; set; }
+
+        public PeerCallStatus(string connectionId, bool onCallAccept, Peer peer)
+        {
+            ConnectionId = connectionId;
+            OnCallAccept = onCallAccept;
+            Peer = peer;
         }
     }
 }

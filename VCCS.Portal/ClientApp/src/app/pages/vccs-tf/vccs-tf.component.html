@@ -67,7 +67,7 @@
                 <ng-container *ngIf="frequencies.length > 0; else elseTemplate">
                   <div class="col-6 pe-1 ps-1 " *ngFor="let frequency of frequencies; let i=index">
                     <div class="frequency mb-2" [id]="'frequency-'+frequency.connectionId">
-                      <div class="channel" (click)="selectFrequency(frequency)" [ngClass]="setClass(frequency)">
+                      <div class="channel" (click)="selectFrequency(frequency)" [ngClass]="setClass(frequency)" [ngStyle]="{'min-height': '64px'}">
                         <div class="">
                           {{frequency.id}}
                         </div>
@@ -75,14 +75,13 @@
                           <div class="signal">
                             <div class="row m-0">
                               <div class="col-6 p-0">
-                                <i class="bi" [ngClass]="{'bi-volume-up-fill': peer.isAudioActive , 'bi-volume-mute-fill': !peer.isAudioActive}"></i>
+                                <i class="bi" [ngClass]="{'bi-mic-fill active': peer.isMicActive, 'bi-mic-mute-fill inactive': !peer.isMicActive}"></i>
                               </div>
                               <div class="col-6 p-0">
-                                TX
+                                <i class="bi" [ngClass]="{'bi-volume-up-fill active': peer.isAudioActive, 'bi-volume-mute-fill inactive': !peer.isAudioActive}"></i>
                               </div>
                             </div>
                           </div>
-
                         </div>
                       </div>
                     </div>

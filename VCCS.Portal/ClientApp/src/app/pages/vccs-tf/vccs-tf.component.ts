@@ -171,7 +171,7 @@ export class VccsTfComponent implements OnInit, OnDestroy {
         this.isMute = true;
     }
     this.muteState(this.isMute);
-    this._signalRService.setPeerPTTState(this.isMute);
+    this.sendAudioStatus();
   }
 
   public setAudio() {
@@ -182,6 +182,7 @@ export class VccsTfComponent implements OnInit, OnDestroy {
       if (audioElement) {
         audioElement.muted = !this.onAudio;
       }
+      this.sendAudioStatus();
     }
   }
 
@@ -549,6 +550,12 @@ export class VccsTfComponent implements OnInit, OnDestroy {
     }
   }
 
+  private sendAudioStatus() {
+    if (this.peer) {
+      this._signalRService.setStatusAudioToPeer(this.peer.connectionId, this.isMute, this.onAudio);
+    }
+  }
+
   // EVENTOS DO SIGNALR
   private subscribeEvents(): void {
     // Exibe erro não tratado no VCCS HUB.
@@ -584,6 +591,10 @@ export class VccsTfComponent implements OnInit, OnDestroy {
         this.frequencies.splice(this.frequencies.indexOf(frequencyExist), 1);
       }
 
+      if (this.peer && this.peer.connectionId === peer.connectionId) {
+        this.internalCloseConnection();
+      }
+
       this._toastr.warning(`Parceiro ${peer.identification} se desconectou.`);
     });
 
@@ -609,6 +620,7 @@ export class VccsTfComponent implements OnInit, OnDestroy {
           this.initiateOffer(peer.connectionId);
           this._signalRService.acceptCall(peer.connectionId, true);
           this.onCall = true;
+          this.sendAudioStatus();
         } else {
           this.onCall = false;
           this._signalRService.acceptCall(peer.connectionId, false);
@@ -620,6 +632,7 @@ export class VccsTfComponent implements OnInit, OnDestroy {
     this._signalRService.onReceiveSignal.pipe(takeUntil(this.unsub$)).subscribe((signalPeer: ISignalPeer) => {
       this.peer = Object.assign({}, signalPeer.peer);
       this.onReceiveSignal(signalPeer.peer.connectionId, signalPeer.signal);
+      this.sendAudioStatus();
     });
 
     // Recebe as configurações de conexão do parceiro e envia um sinal com as minhas configurações, estabelecendo conexões entre os dois.
@@ -631,9 +644,10 @@ export class VccsTfComponent implements OnInit, OnDestroy {
 
       if (status.onCallAccept) {
         this.onCall = true;
+        this.sendAudioStatus();
         this._toastr.success(`Chamada aceita com sucesso!`);
       } else {
-        this.onCall = true;
+        this.onCall = false;
         this._toastr.warning(`Chamada não foi aceita pelo parceiro!`);
       }
     });

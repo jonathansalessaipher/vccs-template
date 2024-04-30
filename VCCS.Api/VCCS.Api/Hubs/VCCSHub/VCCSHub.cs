@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System;
 using VCCS.Domain.Models.VCCS;
 using System.Linq;
+using System.Threading.Channels;
 
 namespace VCCS.Api.Hubs.VCCSHub
 {
@@ -18,7 +19,15 @@ namespace VCCS.Api.Hubs.VCCSHub
         // Terminologias:
         // - CHANNEL: é a frequência de comunicação a qual o usuário está conectado.
         // - PEER: é o usuário que está se conectando ao servidor.
-
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            await LeaveAll();
+            await base.OnDisconnectedAsync(exception);
+        }
+        public string GetConnectionId()
+        {
+            return Context.ConnectionId;
+        }
         public async Task<Peer> Join(string identification, string channelName, bool isPilot)
         {
             // Obter a lista de Peers que já estão no grupo para poder enviar para o Caller.
@@ -119,6 +128,27 @@ namespace VCCS.Api.Hubs.VCCSHub
             await Clients.Client(peer.ConnectionId).ReceiveSignal(new SignalPeer(signal, signilingPeer));
         }
 
+        // CHAMADAS DO TIPO TF
+
+        public async Task SendSignalTF(string signal, string targetConnectionId)
+        {
+            // Verificar se o target ainda está conectado.
+            if (!_peersConnectedsInTF.TryGetValue(targetConnectionId, out Peer? peer))
+            {
+                await Clients.Caller.Error("Conexão de destino não está mais disponível!");
+                return;
+            }
+
+            if (!_peersConnectedsInTF.TryGetValue(Context.ConnectionId, out Peer? signilingPeer))
+            {
+                await Clients.Caller.Error("Sua conexão é inválida. Recarregue a página e tente novamente!");
+                return;
+            }
+
+            //await Clients.Client(peer.ConnectionId).ReceiveSignal(signilingPeer, signal);
+            await Clients.Client(peer.ConnectionId).ReceiveSignal(new SignalPeer(signal, signilingPeer));
+        }
+
         public async Task SetPeerPTTState(bool state)
         {
             if (!_peers.TryGetValue(Context.ConnectionId, out Peer? peer) || string.IsNullOrEmpty(peer.Channel))
@@ -166,8 +196,9 @@ namespace VCCS.Api.Hubs.VCCSHub
 
             // Avisar todos do grupo que um novo usuário entrou na frequência (CHANNEL).
             await Clients.OthersInGroup(channel).ConnectedTF(peer);
+            var peers = _peersConnectedsInTF.Values.Where(x => x.Identification != identification);
 
-            return _peersConnectedsInTF.Values.Where(x => x.Identification != identification).ToArray();
+            return peers.Any() ? peers.ToArray() : new List<Peer>();
         }
 
         public async Task CallPeerToTalk(string identification)
@@ -181,70 +212,77 @@ namespace VCCS.Api.Hubs.VCCSHub
             }
         }
 
-        public async Task SendOffer(string signal, string targetConnectionId)
+        public async Task AcceptCall(string peerConnectionId, bool accept)
         {
             // Verificar se o target ainda está conectado.
-            if (!_peersConnectedsInTF.TryGetValue(targetConnectionId, out Peer? peer))
+            if (!_peersConnectedsInTF.TryGetValue(peerConnectionId, out Peer? peer))
             {
                 await Clients.Caller.Error("Conexão de destino não está mais disponível!");
                 return;
             }
 
-            if (!_peersConnectedsInTF.TryGetValue(Context.ConnectionId, out Peer? signilingPeer))
+            if (!_peersConnectedsInTF.TryGetValue(Context.ConnectionId, out Peer? myInfo))
             {
                 await Clients.Caller.Error("Sua conexão é inválida. Recarregue a página e tente novamente!");
                 return;
             }
 
-            //await Clients.Client(peer.ConnectionId).ReceiveSignal(signilingPeer, signal);
-            await Clients.Client(peer.ConnectionId).ReceiveOffer(new SignalPeer(signal, signilingPeer));
+            _peersConnectedsInTF.FirstOrDefault(x => x.Key == Context.ConnectionId).Value.OnCall = accept;
+            _peersConnectedsInTF.FirstOrDefault(x => x.Key == peerConnectionId).Value.OnCall = accept;
+
+            var peersInGroup = new List<Peer>();
+            peersInGroup.Add(peer);
+            peersInGroup.Add(myInfo);
+            await Clients.OthersInGroup(peer.Channel).PeerStatus(peersInGroup.ToArray());
+
+            await Clients.Client(peer.ConnectionId).CallAccepted(new PeerCallStatus(peerConnectionId, accept, peer));
         }
 
-        public async Task SendAnswer(string signal, string targetConnectionId)
+        public async Task StopCall(string peerConnectionId)
         {
             // Verificar se o target ainda está conectado.
-            if (!_peersConnectedsInTF.TryGetValue(targetConnectionId, out Peer? peer))
+            if (!_peersConnectedsInTF.TryGetValue(peerConnectionId, out Peer? peer))
             {
                 await Clients.Caller.Error("Conexão de destino não está mais disponível!");
                 return;
             }
 
-            if (!_peersConnectedsInTF.TryGetValue(Context.ConnectionId, out Peer? signilingPeer))
+            if (!_peersConnectedsInTF.TryGetValue(Context.ConnectionId, out Peer? myInfo))
             {
                 await Clients.Caller.Error("Sua conexão é inválida. Recarregue a página e tente novamente!");
                 return;
             }
-            //await Clients.Client(peer.ConnectionId).ReceiveSignal(signilingPeer, signal);
-            await Clients.Client(peer.ConnectionId).ReceiveAnswer(new SignalPeer(signal, signilingPeer));
+
+            _peersConnectedsInTF.FirstOrDefault(x => x.Key == Context.ConnectionId).Value.OnCall = false;
+            _peersConnectedsInTF.FirstOrDefault(x => x.Key == peerConnectionId).Value.OnCall = false;
+
+            var peersInGroup = new List<Peer>();
+            peersInGroup.Add(peer);
+            peersInGroup.Add(myInfo);
+            await Clients.OthersInGroup(peer.Channel).PeerStatus(peersInGroup.ToArray());
+
+            await Clients.Client(peer.ConnectionId).StopCall();
         }
 
-        public async Task SendICECandidate(string candidate, string targetConnectionId)
+        public async Task SetAudioToPeer(string peerConnectionId, bool microfoneStatus, bool audioStatus)
         {
-
-            // Verificar se o target ainda está conectado.
-            if (!_peersConnectedsInTF.TryGetValue(targetConnectionId, out Peer? peer))
+            if (!_peersConnectedsInTF.TryGetValue(peerConnectionId, out Peer? peer))
             {
-                await Clients.Caller.Error("Conexão de destino não está mais disponível!");
+                return;
+            };
+
+            if (!_peersConnectedsInTF.TryGetValue(Context.ConnectionId, out Peer? myInfo))
+            {
                 return;
             }
 
-            if (!_peersConnectedsInTF.TryGetValue(Context.ConnectionId, out Peer? signilingPeer))
-            {
-                await Clients.Caller.Error("Sua conexão é inválida. Recarregue a página e tente novamente!");
-                return;
-            }
-            await Clients.Client(peer.ConnectionId).ReceiveICECandidate(candidate);
-        }
+            _peersConnectedsInTF.FirstOrDefault(x => x.Key == Context.ConnectionId).Value.isMicActive = microfoneStatus;
+            _peersConnectedsInTF.FirstOrDefault(x => x.Key == Context.ConnectionId).Value.isAudioActive = audioStatus;
 
-        public string GetConnectionId()
-        {
-            return Context.ConnectionId;
-        }
+            myInfo.isMicActive = microfoneStatus;
+            myInfo.isAudioActive = audioStatus;
 
-        public override async Task OnDisconnectedAsync(Exception? exception)
-        {
-            await LeaveAll();
-            await base.OnDisconnectedAsync(exception);
+            await Clients.Client(peerConnectionId).PeerAudioStatus(myInfo);
         }
     }
 }

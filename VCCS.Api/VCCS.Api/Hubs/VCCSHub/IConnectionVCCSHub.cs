@@ -26,13 +26,13 @@ namespace VCCS.Api.Hubs.VCCSHub
 
 
         //CHAMADAS DO TIPO TF
-
         Task ConnectedTF(Peer peer);
         /// <summary>Informa que um peer se desconectou do mesmo canal (frequência) ao qual o usuário está conectado.</summary>
         Task PeerLeavedTF(Peer peer);
         Task CallingToTalk(Peer peer);
-        Task ReceiveOffer(SignalPeer signalPeer);
-        Task ReceiveAnswer(SignalPeer signalPeer);
-        Task ReceiveICECandidate(string candidate);
+        Task CallAccepted(PeerCallStatus status);
+        Task StopCall();
+        Task PeerStatus(Peer[] peers);
+        Task PeerAudioStatus(Peer peerStatus);
     }
 }
