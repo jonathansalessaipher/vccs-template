@@ -8,7 +8,8 @@ export enum VCCSKeys {
   ConnectedTF = 'ConnectedTF',
   PeerLeavedTF = 'PeerLeavedTF',
   CallingToTalk = 'CallingToTalk',
-  ReceiveOffer = 'ReceiveOffer',
-  ReceiveAnswer = 'ReceiveAnswer',
-  ReceiveICECandidate = 'ReceiveICECandidate',
+  CallAccepted = 'CallAccepted',
+  StopCall = 'StopCall',
+  PeerStatus = 'PeerStatus',
+  PeerAudioStatus = 'PeerAudioStatus'
 }

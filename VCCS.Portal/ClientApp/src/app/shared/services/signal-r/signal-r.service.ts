@@ -3,7 +3,7 @@ import { Injectable } from "@angular/core";
 import * as signalR from "@microsoft/signalr";
 import { Subject } from "rxjs";
 import { environment } from "src/environments/environment";
-import { IPeer, IPeerState, ISignalPeer } from "../../interfaces/peer.interface";
+import { IPeer, IPeerCallStatus, IPeerState, ISignalPeer } from "../../interfaces/peer.interface";
 
 @Injectable({
   providedIn: 'root'
@@ -68,13 +68,16 @@ export class SignalRService {
    * @returns Retorna as informações do parceiro.
    */
    onCallingToTalk: Subject<IPeer> = new Subject<IPeer>();
+
    /**
    * Este evento é acionado quando o parceiro recebeu as minhas configurações de conexão após ele ter entrado na mesma frequência que eu.
    * @returns Retorna as configurações de conexão do parceiro.
    */
-  public offerReceived$: Subject<ISignalPeer> = new Subject<ISignalPeer>();
-  public answerReceived$: Subject<ISignalPeer> = new Subject<ISignalPeer>();
-  public iceCandidateReceived$: Subject<string> = new Subject<string>();
+  public onCallAccepted: Subject<IPeerCallStatus> = new Subject<IPeerCallStatus>();
+
+  public onStopCall: Subject<void> = new Subject<void>();
+  public onPeerStatus: Subject<IPeer[]> = new Subject<IPeer[]>();
+  public onPeerAudioStatus: Subject<IPeer> = new Subject<IPeer>();
 
   constructor() {
     this.url = `${environment.apiUrl}/vccsHub`;
@@ -192,16 +195,20 @@ export class SignalRService {
         this.onCallingToTalk.next(data);
       });
 
-      this.hubConnection.on(VCCSKeys.ReceiveOffer, (offer: ISignalPeer) => {
-        this.offerReceived$.next(offer);
+      this.hubConnection.on(VCCSKeys.CallAccepted, (status: IPeerCallStatus) => {
+        this.onCallAccepted.next(status);
       });
 
-      this.hubConnection.on(VCCSKeys.ReceiveAnswer, (answer: ISignalPeer) => {
-        this.answerReceived$.next(answer);
+      this.hubConnection.on(VCCSKeys.StopCall, () => {
+        this.onStopCall.next();
       });
 
-      this.hubConnection.on(VCCSKeys.ReceiveICECandidate, (candidate: any) => {
-        this.iceCandidateReceived$.next(candidate);
+      this.hubConnection.on(VCCSKeys.PeerStatus, (peers: IPeer[]) => {
+        this.onPeerStatus.next(peers);
+      });
+
+      this.hubConnection.on(VCCSKeys.PeerAudioStatus, (peer: IPeer) => {
+        this.onPeerAudioStatus.next(peer);
       });
     }
   }
@@ -269,6 +276,12 @@ export class SignalRService {
     });
   }
 
+  public sendSignalTF(signal: string, partnerId: string) {
+    this.hubConnection.invoke<IPeer>("SendSignalTF", signal, partnerId).then(() => {
+
+    });
+  }
+
   public async connect(identification: string): Promise<IPeer[] | null>{
     if(this.hubConnection) {
       try {
@@ -309,21 +322,23 @@ export class SignalRService {
     }
   }
 
-  public sendOffer(offer: RTCSessionDescriptionInit, peerConnectionId: string): void {
-    const data = JSON.stringify(offer);
-    this.hubConnection.invoke('SendOffer', data, peerConnectionId)
+  public acceptCall(peerConnectionId: string, accept: boolean): void {
+    this.hubConnection.invoke('AcceptCall', peerConnectionId, accept)
       .catch(err => console.error('Error while sending offer via SignalR: ', err));
   }
 
-  public sendAnswer(answer: RTCSessionDescriptionInit, peerConnectionId: string): void {
-    const data = JSON.stringify(answer);
-    this.hubConnection.invoke('SendAnswer', data, peerConnectionId)
-      .catch(err => console.error('Error while sending answer via SignalR: ', err));
+  public stopCall(peerConnectionId: string): void {
+    this.hubConnection.invoke('StopCall', peerConnectionId)
+      .catch(err => console.error('Error while sending offer via SignalR: ', err));
   }
 
-  public sendICECandidate(candidate: RTCIceCandidate, peerConnectionId: string): void {
-    const data = JSON.stringify(candidate);
-    this.hubConnection.invoke('SendICECandidate', data, peerConnectionId)
-      .catch(err => console.error('Error while sending ICE candidate via SignalR: ', err));
+  public setStatusAudioToPeer(peerConnectionId: string, microfone: boolean, audio: boolean): void {
+    if(this.hubConnection) {
+      this.hubConnection.invoke("SetAudioToPeer", peerConnectionId, microfone, audio)
+      .then(() => {})
+      .catch(err => {
+          console.error(err);
+      });
+    }
   }
 }

@@ -1,7 +1,7 @@
 import { Component, EventEmitter, HostListener, OnDestroy, OnInit, Renderer2 } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
 import { Subject, takeUntil } from 'rxjs';
-import { AudioDeviceType, IAudioDeviceInfo, IPeer, IPeerState, ISignalPeer } from 'src/app/shared/interfaces';
+import { IAudioDeviceInfo, IPeer, IPeerCallStatus, IPeerState, ISignalPeer } from 'src/app/shared/interfaces';
 import { Frequency } from 'src/app/shared/models';
 import { SignalRService } from 'src/app/shared/services/signal-r/signal-r.service';
 import { AudioDeviceUtil, GuidUtil } from 'src/app/shared/utils';
@@ -15,18 +15,20 @@ import { custom } from 'devextreme/ui/dialog';
 })
 export class VccsTfComponent implements OnInit, OnDestroy {
   private unsub$: any = new Subject();
-  private readonly myId = GuidUtil.generateGUID().substring(0, 3);
+  public readonly myId = GuidUtil.generateGUID().substring(0, 3);
   public remoteStream: MediaStream = new MediaStream();
 
   public height = 0;
 
-  public peerConnection!: RTCPeerConnection;
+  public peerConnection!: RTCPeerConnection | undefined;
   private localStream!: MediaStream;
-  public peer!: IPeer;
+  public peer!: IPeer | undefined;
 
   public myConnectionId: string = '';
   public isMute: boolean = false;
+  public onAudio: boolean = true;
   public isConnected = false;
+  public onCall = false;
 
   public frequencies: Frequency[] = [];
 
@@ -120,7 +122,11 @@ export class VccsTfComponent implements OnInit, OnDestroy {
   }
 
   public selectFrequency(frequency: Frequency) {
-    if (this.peerConnection) {
+    if (!this.peer && !this.peerConnection) {
+      if (!frequency.onCall) {
+        this.callPeerToTalk(frequency);
+      }
+    } else if (this.peer && this.peerConnection && frequency.connectionId !== this.peer.connectionId) {
       let myDialog = custom({
         title: 'Iniciar chamada',
         messageHtml: `Você já está em uma chamada, deseja cancelar e começar outra?`,
@@ -136,21 +142,20 @@ export class VccsTfComponent implements OnInit, OnDestroy {
 
       myDialog.show().then((dialogResult: boolean) => {
         if (dialogResult) {
-          this.peerConnection.close();
-          this.peerConnection = {} as RTCPeerConnection;
-          this.peer = {} as IPeer;
-          this.callPeerToTalk(frequency);
+          if (this.peerConnection !== undefined && this.peer) {
+            this._signalRService.stopCall(this.peer.connectionId);
+            this.internalCloseConnection();
+            this.callPeerToTalk(frequency);
+          }
         }
       });
-  } else {
-    this.callPeerToTalk(frequency);
-  }
+    }
   }
 
   private async callPeerToTalk(frequency: Frequency) {
     var selectedFrequency = Object.assign({}, this.frequencies.find(f => f.id === frequency.id)!);
     if (selectedFrequency) {
-      this.frequencies.filter(f => f.isSelected).forEach(f => f.isSelected = false);
+      // this.frequencies.filter(f => f.isSelected).forEach(f => f.isSelected = false);
 
       this._signalRService.callPeerToTalk(frequency.id);
     }
@@ -167,6 +172,17 @@ export class VccsTfComponent implements OnInit, OnDestroy {
     }
     this.muteState(this.isMute);
     this._signalRService.setPeerPTTState(this.isMute);
+  }
+
+  public setAudio() {
+    this.onAudio = !this.onAudio;
+    if (this.peer) {
+      var audioElement: any = document.querySelector('[data-connection="' + this.peer.connectionId + '"]');
+      // var audioElements: any = document.getElementsByTagName('audio');
+      if (audioElement) {
+        audioElement.muted = !this.onAudio;
+      }
+    }
   }
 
   // VERIFICA DISPOSITIVOS DE ÁUDIO DISPONÍVEIS NO SISTEMA E CONFIGURA SAÍDA DE SOM E MICROFONE NOS DISPOSITIVOS PADRÕES DO SISTEMA
@@ -253,7 +269,7 @@ export class VccsTfComponent implements OnInit, OnDestroy {
   // MÉTODO QUE SUBSTITUI OS MICROFONES NAS CONEXÕES (RTC) EXISTENTES
   private async replaceMicrofonesInPeerConnections() {
 
-    if (this.peerConnection) {
+    if (this.peerConnection !== undefined) {
       // Obter os envios de mídia (senders) da conexão
       const senders = this.peerConnection.getSenders();
 
@@ -291,15 +307,21 @@ export class VccsTfComponent implements OnInit, OnDestroy {
   }
 
   // MÉTODO QUE ENCERRA UMA CONEXÃO COM UM PARCEIRO
-  private internalCloseConnection(id: string) {
+  private internalCloseConnection() {
 
-    if (this.peerConnection) {
+    if (this.peerConnection && this.peer) {
+      var frequency = this.frequencies.find(x => x.connectionId === this.peer!.connectionId);
+      if (frequency) {
+        frequency.onCall = false;
+      }
+      var otherAudio: any = document.querySelector('[data-connection="' + this.peer.connectionId + '"]');
+      if (otherAudio && otherAudio.src) {
+        otherAudio.src = '';
+      }
+      this.onCall = false;
       this.peerConnection.close();
-        var otherAudio: any = document.querySelector('[data-connection="' + id + '"]');
-        if (otherAudio && otherAudio.src) {
-          otherAudio.src = '';
-        }
-        this.peerConnection = {} as RTCPeerConnection;
+      this.peerConnection = undefined;
+      this.peer = undefined;
     }
   };
 
@@ -309,7 +331,7 @@ export class VccsTfComponent implements OnInit, OnDestroy {
       const getAudioLevel = (timestamp: any) => {
         window.requestAnimationFrame(getAudioLevel);
 
-        if (!this.peerConnection) {
+        if (this.peerConnection === undefined || this.peer === undefined) {
           return;
         }
 
@@ -329,7 +351,7 @@ export class VccsTfComponent implements OnInit, OnDestroy {
               if (source.audioLevel >= 0.02) {
 
                 if (this.peer) {
-                  var element = document.getElementById(this.peer.connectionId);
+                  var element = document.getElementById('frequency-' + this.peer.connectionId);
                   if (element) {
                     this.renderer.addClass(element, 'blinking-border');
 
@@ -337,15 +359,15 @@ export class VccsTfComponent implements OnInit, OnDestroy {
                       this.renderer.removeClass(element, 'blinking-border');
                     }, 2000);
                   }
-                }
 
-                var voiceElement = document.getElementById('voice-' + this.peer.connectionId);
-                if (voiceElement) {
-                  this.renderer.setStyle(voiceElement, 'visibility', 'visible');
+                  var voiceElement = document.getElementById('voice-' + this.peer.connectionId);
+                  if (voiceElement) {
+                    this.renderer.setStyle(voiceElement, 'visibility', 'visible');
 
-                  setTimeout(() => {
-                    this.renderer.setStyle(voiceElement, 'visibility', 'hidden');
-                  }, 2000);
+                    setTimeout(() => {
+                      this.renderer.setStyle(voiceElement, 'visibility', 'hidden');
+                    }, 2000);
+                  }
                 }
               }
             });
@@ -359,7 +381,7 @@ export class VccsTfComponent implements OnInit, OnDestroy {
     if (this.localStream) {
       this.localStream.getTracks().forEach(track => track.stop());
     }
-    //this.internalCloseConnection(this.peer.connectionId);
+    this.internalCloseConnection();
   }
 
   @HostListener('window:resize', ['$event.target.innerHeight'])
@@ -372,8 +394,163 @@ export class VccsTfComponent implements OnInit, OnDestroy {
     this.closeAllConnections();
   }
 
-   // EVENTOS DO SIGNALR
-   private subscribeEvents(): void {
+  setClass(frequency: Frequency): string {
+    if (this.peer) {
+      if (this.peer.connectionId === frequency.connectionId) {
+        return 'channel-selected';
+      }
+    } else if (frequency.onCall) {
+        return 'on-call';
+    }
+
+    return 'channel';
+  }
+  // MÉTODO QUE INICIA UMA NOVA CONEXÃO E OFERECE AO PARCEIRO, APÓS TER RECEBIDO UM SINAL (signalR) DE QUE UM PARCEIRO SE CONECTOU NA MESMA FREQUÊNCIA (Canal)
+  // APÓS REALIZAR ESSA NOVA CONEXÃO, O MÉTODO ENVIA UMA SINAL (signalR) COM AS CONFIGURAÇÕES DE CONEXÃO PARA O PARCEIRO
+  private initiateOffer(connectionId: string) {
+    var connection = this.getConnection(connectionId); // // get a connection for the given partner
+
+    connection.createOffer(OFFER_OPTIONS).then((offer: any) => {
+
+        connection.setLocalDescription(offer).then(() => {
+
+            this.sendHubSignal(JSON.stringify({ "sdp": connection.localDescription }), connectionId);
+        }).catch((err: any) => {
+          console.error('WebRTC: Error while setting local description', err);
+          this.errorHandler(err);
+        });
+    }).catch((err: any) => {
+      console.error('WebRTC: Error while creating offer', err);
+      this.errorHandler(err);
+    });
+  }
+
+  // CRIA UMA NOVA CONEXÃO (RTC) CASO NÃO EXISTA OU RETORNA UMA CONEXÃO JÁ EXISTENTE ATRAVÉS DO ID DO PARCEIRO
+  private getConnection(partnerClientId: string): RTCPeerConnection {
+    if (this.peerConnection !== undefined) {
+        return this.peerConnection;
+    }
+    else {
+        return this.initializeConnection(partnerClientId)
+    }
+  }
+
+  // CONFIGURA UMA NOVA CONEXÃO (RTC) COM O PARCEIRO
+  private initializeConnection(partnerClientId: string): RTCPeerConnection {
+    var peerConnectionConfig = { iceServers: ICE_SERVERS };
+
+    var connection = new RTCPeerConnection(peerConnectionConfig);
+
+    var sendHubSignalEvent: EventEmitter<string> = new EventEmitter<string>();
+    sendHubSignalEvent.subscribe((data) => {
+      this.sendHubSignal(data, partnerClientId);
+    });
+
+    connection.onicecandidate = function (e) {
+
+        if (e.candidate) {// Found a new candidate
+            sendHubSignalEvent.emit(JSON.stringify({ "candidate": e.candidate }));
+        } else {
+            // Null candidate means we are done collecting candidates.
+            sendHubSignalEvent.emit(JSON.stringify({ "candidate": null }));
+        }
+    }
+
+    connection.ontrack = function (e) {
+        var peerAudio: any = document.querySelector('[data-connection="' + partnerClientId + '"]');
+
+        // Bind the remote stream to the partner window
+        if (peerAudio != null && peerAudio.srcObject !== e.streams[0]) {
+            peerAudio.srcObject = e.streams[0];
+        }
+    }
+
+    connection.removeTrack = function (e) {
+      // Clear out the partner window
+      var otherAudio: any = document.querySelector('[data-connection="' + partnerClientId + '"]');
+      if (otherAudio && otherAudio.src) {
+        otherAudio.src = '';
+      }
+     }
+
+
+    connection.removeEventListener = function (e: any) {
+        // Clear out the partner window
+        var otherAudio: any = document.querySelector('[data-connection="' + partnerClientId + '"]');
+        if (otherAudio && otherAudio.src) {
+          otherAudio.src = '';
+        }
+    }
+
+    this.localStream.getTracks().forEach(track => connection.addTrack(track, this.localStream));
+
+    this.peerConnection = connection; // Store away the connection based on username
+
+    return connection;
+  }
+
+  // MÉTODO QUE ENVIA UM SINAL PARA O PARCEIRO
+  private sendHubSignal(candidate: string, partnerClientId: string) {
+    this._signalRService.sendSignalTF(candidate, partnerClientId);
+  }
+
+  // MÉTODO QUE RECEBE UM SINAL (SDP) DO PARCEIRO E ENVIA UMA RESPOSTA (SDP) DE VOLTA PARA O PARCEIRO APÓS UMA NOVA CONEXÃO TER SIDO CONFIGURADO
+  private async onReceiveSignal(partnerClientId: string, data: string) {
+    var signal = JSON.parse(data);
+    var connection = this.getConnection(partnerClientId);
+
+    // Route signal based on type
+    if (signal.sdp) {
+        await this.receivedSdpSignal(connection, partnerClientId, signal.sdp);
+    } else if (signal.candidate) {
+        connection.addIceCandidate(new RTCIceCandidate(signal.candidate))
+        .then()
+        .catch((err) => {
+          console.error("WebRTC: cannot add candidate: " + err);
+          this.errorHandler(err);
+        });
+    } else {
+        connection
+            .addIceCandidate(undefined) // TODO: Check if this is correct
+            .then()
+            .catch((err) => {
+                console.error('WebRTC: cannot add null candidate: ' + err);
+                this.errorHandler(err);
+            });
+    }
+  }
+
+  // MÉTODO QUE ENVIA AS COFNIGURAÇÕES DE CONEXÃO PARA O PARCEIRO APÓS A CONEXÃO TER SIDO ESTABELECIDA
+  private async receivedSdpSignal(connection: RTCPeerConnection, partnerClientId: string, sdp: any) {
+    try {
+        await connection.setRemoteDescription(new RTCSessionDescription(sdp));
+
+        if (connection && connection.remoteDescription && connection.remoteDescription.type == "offer") {
+          const desc = await connection.createAnswer();
+          await connection.setLocalDescription(desc);
+          this.sendHubSignal(JSON.stringify({ "sdp": connection.localDescription }), partnerClientId);
+        } else if (connection && connection.remoteDescription && connection.remoteDescription.type == "answer") {
+            console.log('WebRTC: remote Description type answer');
+        } else {
+          if (connection && connection.remoteDescription) {
+            console.error(`ERROR: ${connection.remoteDescription.type}`);
+          }
+        }
+    } catch (e) {
+        this.errorHandler(e);
+    }
+  }
+
+  public stopCall() {
+    if (this.peer !== undefined) {
+      this._signalRService.stopCall(this.peer.connectionId);
+      this.internalCloseConnection();
+      this._toastr.warning(`Chamada finalizada!`);
+    }
+  }
+
+  // EVENTOS DO SIGNALR
+  private subscribeEvents(): void {
     // Exibe erro não tratado no VCCS HUB.
     this._signalRService.onError.pipe(takeUntil(this.unsub$)).subscribe((error: string) => {
       this._toastr.warning(error);
@@ -381,7 +558,7 @@ export class VccsTfComponent implements OnInit, OnDestroy {
 
     // Atualiza status do microfone para o usuário quando o parceiro muda o status do seu microfone.
     this._signalRService.onPeerPTTState.pipe(takeUntil(this.unsub$)).subscribe((peerState: IPeerState) => {
-      if (peerState) {
+      if (peerState && this.peer) {
         if (peerState.state) {
           this.peer.isMicActive = true;
         } else {
@@ -429,93 +606,63 @@ export class VccsTfComponent implements OnInit, OnDestroy {
       myDialog.show().then((dialogResult: boolean) => {
         if (dialogResult) {
           this.peer = Object.assign({}, peer);
-          this.startCall();
+          this.initiateOffer(peer.connectionId);
+          this._signalRService.acceptCall(peer.connectionId, true);
+          this.onCall = true;
+        } else {
+          this.onCall = false;
+          this._signalRService.acceptCall(peer.connectionId, false);
         }
       });
     });
 
-    this._signalRService.offerReceived$.subscribe((signalPeer: ISignalPeer) => {
+    // Recebe as configurações de conexão do parceiro e envia um sinal com as minhas configurações, estabelecendo conexões entre os dois.
+    this._signalRService.onReceiveSignal.pipe(takeUntil(this.unsub$)).subscribe((signalPeer: ISignalPeer) => {
       this.peer = Object.assign({}, signalPeer.peer);
-      var offer: RTCSessionDescriptionInit = JSON.parse(signalPeer.signal);
-      this.handleOffer(offer);
-      this.frequencies.find(f => f.id === this.peer.identification)!.isSelected = true;
+      this.onReceiveSignal(signalPeer.peer.connectionId, signalPeer.signal);
     });
 
-    this._signalRService.answerReceived$.subscribe((signalPeer: ISignalPeer) => {
-      var answer: RTCSessionDescriptionInit = JSON.parse(signalPeer.signal);
-      this.handleAnswer(answer);
-      this.frequencies.find(f => f.id === this.peer.identification)!.isSelected = true;
-    });
-
-    this._signalRService.iceCandidateReceived$.subscribe((candidate: string) => {
-      if (this.peerConnection) {
-        var data: RTCIceCandidate = JSON.parse(candidate);
-        this.peerConnection.addIceCandidate(data).then(() => {});
-        console.log('ICE Candidate received: ', candidate);
-      }
-    });
-  }
-
-  public async startCall(): Promise<void> {
-    try {
-      //this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-      var configuration = { iceServers: ICE_SERVERS };
-      this.peerConnection = new RTCPeerConnection(configuration);
-
-      // Adicione tracks de áudio e vídeo ao peer connection
-      this.localStream.getTracks().forEach(track => this.peerConnection.addTrack(track, this.localStream));
-
-      // Adicione os handlers para eventos de negociação de peer
-      this.peerConnection.onicecandidate = event => this.handleICECandidateEvent(event);
-      this.peerConnection.ontrack = event => this.handleTrackEvent(event);
-
-      // Crie uma oferta SDP para iniciar a comunicação
-      const offer = await this.peerConnection.createOffer();
-      await this.peerConnection.setLocalDescription(offer);
-      this._signalRService.sendOffer(offer, this.peer.connectionId);
-    } catch (err) {
-      console.error('Error starting WebRTC call: ', err);
-    }
-  }
-
-  private async handleOffer(offer: RTCSessionDescriptionInit): Promise<void> {
-    try {
-      if (!this.peerConnection) {
-        var peerConnectionConfig = { iceServers: ICE_SERVERS };
-        this.peerConnection = new RTCPeerConnection(peerConnectionConfig);
-        this.peerConnection.onicecandidate = event => this.handleICECandidateEvent(event);
-        this.peerConnection.ontrack = event => this.handleTrackEvent(event);
+    // Recebe as configurações de conexão do parceiro e envia um sinal com as minhas configurações, estabelecendo conexões entre os dois.
+    this._signalRService.onCallAccepted.pipe(takeUntil(this.unsub$)).subscribe((status: IPeerCallStatus) => {
+      var frequency = this.frequencies.find(x => x.connectionId === status.connectionId);
+      if (frequency) {
+        frequency.onCall = status.onCallAccept;
       }
 
-      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await this.peerConnection.createAnswer();
-      await this.peerConnection.setLocalDescription(answer);
-      this._signalRService.sendAnswer(answer, this.peer.connectionId);
-    } catch (err) {
-      console.error('Error handling offer: ', err);
-    }
-  }
+      if (status.onCallAccept) {
+        this.onCall = true;
+        this._toastr.success(`Chamada aceita com sucesso!`);
+      } else {
+        this.onCall = true;
+        this._toastr.warning(`Chamada não foi aceita pelo parceiro!`);
+      }
+    });
 
-  private async handleAnswer(answer: RTCSessionDescriptionInit): Promise<void> {
-    try {
-      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-    } catch (err) {
-      console.error('Error handling answer: ', err);
-    }
-  }
+    this._signalRService.onStopCall.pipe(takeUntil(this.unsub$)).subscribe(() => {
+      if (this.peer) {
+        this._toastr.warning(`Chamada finalizada!`);
+        var frequency = this.frequencies.find(x => x.connectionId === this.peer!.connectionId);
+        if (frequency) {
+          frequency.onCall = false;
+        }
+        this.internalCloseConnection();
+      }
+    });
 
-  private async handleICECandidateEvent(event: RTCPeerConnectionIceEvent): Promise<void> {
-    if (event.candidate) {
-      this._signalRService.sendICECandidate(event.candidate, this.peer.connectionId);
-    }
-  }
+    this._signalRService.onPeerStatus.pipe(takeUntil(this.unsub$)).subscribe((peers: IPeer[]) => {
+      peers.forEach(peer => {
+        var frequency = this.frequencies.find(x => x.connectionId === peer.connectionId);
+        if (frequency) {
+          frequency.onCall = peer.onCall;
+        }
+      });
+    });
 
-  private async handleTrackEvent(event: RTCTrackEvent): Promise<void> {
-    // Reproduza a faixa de áudio no elemento de áudio no HTML
-    const audioElement = document.getElementById('remoteAudio') as HTMLAudioElement;
-    if (audioElement) {
-      audioElement.srcObject = event.streams[0];
-      audioElement.play().catch(err => console.error('Error playing remote audio: ', err));
-    }
+    this._signalRService.onPeerAudioStatus.pipe(takeUntil(this.unsub$)).subscribe((peer: IPeer) => {
+      if (this.peer) {
+        this.peer.isAudioActive = peer.isAudioActive;
+        this.peer.isMicActive = peer.isMicActive;
+      }
+    });
   }
 }

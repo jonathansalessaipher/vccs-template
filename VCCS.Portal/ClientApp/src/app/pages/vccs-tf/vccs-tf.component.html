@@ -2,38 +2,61 @@
   <div class="dx-card responsive-paddings" [ngStyle]="{'height': height + 'px'}">
     <div class="top">
       <div class="audio">
-        <!-- Elemento de áudio para cada parceiro conectado à frequência (Canal) -->
-        <audio id="remoteAudio" autoplay="" playsinline="true"></audio>
+        <audio *ngIf="peer" class="peer" [id]="peer.connectionId" [attr.data-connection]="peer.connectionId" autoplay="" playsinline="true"></audio>
       </div>
       <div class="row">
         <div class="col flex-center ps-2">
           <span class="me-2 badge" [ngClass]="{'badge-success': isConnected, 'badge-error': !isConnected}"></span>
-          <span class="me-2" *ngIf="isConnected"> {{ myConnectionId ? 'ID de conexão: ' + myConnectionId : 'Conectando...' }}</span>
-
+          <span class="me-2" *ngIf="isConnected"> ID de conexão: <span class="id">{{'TF-'+ myId }}</span></span>
+        </div>
+        <div class="col">
+          <div class="float-end">
+            <dx-button
+              text="Escolher dispositivos"
+              icon="preferences"
+              (click)="showConfigDevices = true"
+              stylingMode='contained'
+              type="default">
+            </dx-button>
+          </div>
+      </div>
+      <div class="row mt-2">
+        <div class="col flex-center ps-2">
           <dx-button
             class="me-2"
-            [text]="isMute ? 'Mutar' : 'Desmutar'"
             (click)="mutateOrUnmute()"
-            stylingMode='contained'
-            [type]="isMute ? 'danger' : 'success'"
-            [disabled]="!isConnected || peer === undefined">
+            stylingMode='text'
+            [type]="isMute ? 'success' : 'danger'"
+            [disabled]="!onCall">
+            <i class="action-icon bi" [ngClass]="{'bi-mic-fill': isMute, 'bi-mic-mute-fill': !isMute}"></i>
           </dx-button>
 
           <dx-button
-            text="Escolher dispositivos"
-            icon="preferences"
-            (click)="showConfigDevices = true"
+            class="me-2"
+            (click)="setAudio()"
+            stylingMode='text'
+            [type]="onAudio ? 'success' : 'danger'"
+            [disabled]="!onCall">
+            <i class="action-icon bi" [ngClass]="{'bi-volume-up-fill': onAudio, 'bi-volume-mute-fill': !onAudio}"></i>
+          </dx-button>
+
+          <dx-button
+            text='FINALIZAR CHAMADA'
+            (click)="stopCall()"
             stylingMode='contained'
-            type="default">
+            [type]="'danger'"
+            [disabled]="!onCall">
+            <i class="bi bi-telephone-x-fill"></i>
+            <strong class="ms-3">FINALIZAR CHAMADA</strong>
           </dx-button>
         </div>
       </div>
     </div>
 
     <div class="row mt-2">
-      <div class="col-sm-6 col-md-7 col-lg-8 col-xl-8 col-xxl-9">
+      <div class="col-12">
         <div class="row mt-2">
-          <div class="col-sm-6 col-md-6 col-lg-5 col-xl-4 col-xxl-3">
+          <div class="col-sm-12 col-md-6 col-lg-5 col-xl-4 col-xxl-3">
             <div class="tf">
               <div class="row m-0 mb-2">
                 <div class="col text-center">
@@ -43,21 +66,24 @@
               <div class="row m-0">
                 <ng-container *ngIf="frequencies.length > 0; else elseTemplate">
                   <div class="col-6 pe-1 ps-1 " *ngFor="let frequency of frequencies; let i=index">
-                    <div class="frequency mb-2" [id]="frequency.connectionId">
-                      <div class="channel" (click)="selectFrequency(frequency)" [ngClass]="{'channel-selected': frequency.isSelected}">
+                    <div class="frequency mb-2" [id]="'frequency-'+frequency.connectionId">
+                      <div class="channel" (click)="selectFrequency(frequency)" [ngClass]="setClass(frequency)">
                         <div class="">
                           {{frequency.id}}
                         </div>
-                        <!-- <div class="signal">
-                          <div class="row m-0">
-                            <div class="col-6 p-0">
-                              RX
-                            </div>
-                            <div class="col-6 p-0">
-                              TX
+                        <div *ngIf="peer && frequency.connectionId === peer.connectionId">
+                          <div class="signal">
+                            <div class="row m-0">
+                              <div class="col-6 p-0">
+                                <i class="bi" [ngClass]="{'bi-volume-up-fill': peer.isAudioActive , 'bi-volume-mute-fill': !peer.isAudioActive}"></i>
+                              </div>
+                              <div class="col-6 p-0">
+                                TX
+                              </div>
                             </div>
                           </div>
-                        </div> -->
+
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -74,64 +100,7 @@
           </div>
         </div>
       </div>
-      <div class="col-sm-6 col-md-5 col-lg-4 col-xl-4 col-xxl-3">
-        <div class="card h-100 pe-0">
-          <div class="card-header">
-              Conexões ativas
-          </div>
-          <!-- <div class="card-body p-0">
-            <ng-container *ngIf="peers.length == 0; else elseTemplate">
-              <span class="alert alert-info d-block text-center m-3" role="alert">Nenhuma conexão ativa</span>
-            </ng-container>
-            <ng-template #elseTemplate>
-              <table class="table">
-                <thead>
-                    <tr>
-                        <th class="bg-secondary">Id</th>
-                        <th class="bg-secondary"></th>
-                        <th class="bg-secondary"></th>
-                        <th class="bg-secondary">Tipo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let peer of peers; let i=index">
-                    <td>{{peer.identification}} </td>
-
-                    <td class="tcc">
-                      <ng-container *ngIf="peer.connectionId != myConnectionId;">
-                        <i class="bi" [ngClass]="{'bi-mic text-success': peer.isMicActive, 'bi-mic-mute text-danger': !peer.isMicActive}"></i>
-                      </ng-container>
-                    </td>
-
-                    <td class="tcc">
-
-                      <ng-container *ngIf="peer.connectionId != myConnectionId;">
-                        <i [id]="'voice-'+peer.connectionId" class="voice bi bi-volume-up-fill" [attr.data-voice]="peer.connectionId" [ngStyle]="{'visibility': 'hidden'}"></i>
-                      </ng-container>
-                    </td>
-
-                    <td class="tcc">
-                      <ng-container *ngIf="peer.connectionId == myConnectionId; else elseTemplate">
-                        <span class="badge bg-secondary">EU</span>
-                      </ng-container>
-                      <ng-template #elseTemplate>
-                        <ng-container *ngIf="peer.isPilot; else elseTemplate">
-                          <i class="bi bi-airplane-engines"></i>
-                        </ng-container>
-                        <ng-template #elseTemplate>
-                          <span class="badge bg-info">ATCO</span>
-                        </ng-template>
-                      </ng-template>
-                    </td>
-                  </tr>
-                </tbody>
-            </table>
-            </ng-template>
-          </div> -->
-        </div>
-      </div>
     </div>
-
   </div>
 </div>
 
