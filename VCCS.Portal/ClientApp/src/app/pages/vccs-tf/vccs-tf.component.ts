@@ -42,6 +42,9 @@ export class VccsTfComponent implements OnInit, OnDestroy {
   public selectedAudio!: IAudioDeviceInfo;
   public selectedMicrofone!: IAudioDeviceInfo;
 
+  private _heliFilter: BiquadFilterNode;
+  private _audioContext: AudioContext
+
   constructor(private _signalRService: SignalRService,
     private _toastr: ToastrService,
     private renderer: Renderer2,
@@ -59,6 +62,12 @@ export class VccsTfComponent implements OnInit, OnDestroy {
         type: 'normal',
         onClick: () => this.cancelChangeDevices()
       };
+
+      // Inicialize o contexto de áudio e o filtro do helicóptero
+    this._audioContext = new AudioContext();
+    this._heliFilter = this._audioContext.createBiquadFilter();
+    this._heliFilter.type = 'highpass'; // Filtro passa-alta
+    this._heliFilter.frequency.value = 1000; // Frequência de corte
   }
 
   async ngOnInit(): Promise<void> {
@@ -472,8 +481,7 @@ export class VccsTfComponent implements OnInit, OnDestroy {
       if (otherAudio && otherAudio.src) {
         otherAudio.src = '';
       }
-     }
-
+    }
 
     connection.removeEventListener = function (e: any) {
         // Clear out the partner window
@@ -482,6 +490,10 @@ export class VccsTfComponent implements OnInit, OnDestroy {
           otherAudio.src = '';
         }
     }
+
+    const audioSource = this._audioContext.createMediaStreamSource(this.localStream);
+    audioSource.connect(this._heliFilter);
+    this._heliFilter.connect(this._audioContext.destination);
 
     this.localStream.getTracks().forEach(track => connection.addTrack(track, this.localStream));
 
